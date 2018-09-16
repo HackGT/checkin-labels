@@ -6,7 +6,7 @@ import fetch from "node-fetch";
 
 const Config: { url: string; key: string } = JSON.parse(fs.readFileSync("./config.json", "utf8"));
 
-// const printer = new BrotherQL.Printer();
+const printer = new BrotherQL.Printer();
 const nfc = new NFC();
 
 enum ParserState {
@@ -185,6 +185,9 @@ async function query<T>(query: string, variables?: { [name: string]: string }): 
 nfc.on("reader", async (reader: any) => {
 	reader.aid = "F222222222";
 
+	await printer.init();
+	printer.useFont("Chicago", __dirname + "/Chicago.ttf");
+
 	reader.on("card", async () => {
 		let data: Buffer;
 		let url: string;
@@ -245,7 +248,8 @@ nfc.on("reader", async (reader: any) => {
 		if (user.application.type === "Volunteer") {
 			secondary = user.application.data.find(item => item.name === "volunteer-role")!.value + " Volunteer";
 		}
-		console.log(name, secondary);
+
+		await printer.printText(name, secondary);
 	});
 
 	reader.on("error", (err: Error) => {
