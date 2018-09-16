@@ -1,8 +1,12 @@
+import * as fs from "fs";
+import * as urllib from "url";
 import * as BrotherQL from "brother-ql";
 const { NFC } = require("nfc-pcsc");
+import fetch from "node-fetch";
+
+const Config: { url: string; key: string } = JSON.parse(fs.readFileSync("./config.json", "utf8"));
 
 // const printer = new BrotherQL.Printer();
-
 const nfc = new NFC();
 
 enum ParserState {
@@ -90,14 +94,14 @@ class NDEFParser {
 	}
 
 	public getURI(): string {
-		if (this.content.length < 2) {
+		if (this.content.length < 2 || this.ndefType !== WellKnownType.URI) {
 			throw new Error("No URI found in parsed content");
 		}
 		return this.getProtocol(this.content[0]) + this.content.slice(1, this.content.length).toString("utf8");
 	}
 	public getText(): string {
-		if (this.content.length < 4) {
-			throw new Error("No content found on tag");
+		if (this.content.length < 4 || this.ndefType !== WellKnownType.Text) {
+			throw new Error("No text content found on tag");
 		}
 		const languageCodeLength = this.content[0];
 		return this.content.slice(1 + languageCodeLength, this.content.length).toString("utf8");
@@ -157,18 +161,91 @@ class NDEFParser {
 	}
 }
 
+async function query<T>(query: string, variables?: { [name: string]: string }): Promise<T> {
+	let response = await fetch(urllib.resolve(Config.url, "/graphql"), {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"Authorization": `Basic ${Buffer.from(Config.key, "utf8").toString("base64")}`
+		},
+		body: JSON.stringify({
+			query,
+			variables: variables || {}
+		})
+	});
+	let json = await response.json();
+	if (response.ok) {
+		return json.data;
+	}
+	else {
+		throw new Error(JSON.stringify(json.errors));
+	}
+}
+
 nfc.on("reader", async (reader: any) => {
 	reader.aid = "F222222222";
 
 	reader.on("card", async () => {
 		let data: Buffer;
+		let url: string;
 		try {
-			data = await reader.read(4, 64);
+			data = await reader.read(4, 70);
+			url = new NDEFParser(data).getURI();
 		}
 		catch {
 			return;
 		}
-		console.log(new NDEFParser(data).getContent());
+		const match = url.match(/^https:\/\/live.hack.gt\/?\?user=([a-f0-9\-]+)$/i);
+		if (!match) {
+			console.warn(`Invalid URL: ${url}`);
+			return;
+		}
+		const [, id] = match;
+
+		interface UserResponse {
+			user: {
+				name: string;
+				application: {
+					type: string;
+					data: {
+						name: string;
+						value: string;
+					}[];
+				} | null;
+			} | null;
+		}
+		const { user } = await query<UserResponse>(`
+		{ user(id: "${id}") {
+			name,
+			application {
+				type,
+				data {
+					name,
+					value
+				}
+			}
+		} }`);
+		if (!user) {
+			console.warn(`ID ${id} not found in registration`);
+			return;
+		}
+		if (!user.application) {
+			console.warn(`User ${id} (${user.name}) has not applied`);
+			return;
+		}
+		let name = user.name;
+		let secondary: string | undefined = undefined;
+
+		if (["Participant - Travel Reimbursement", "Participant - Travel Reimbursement"].includes(user.application.type)) {
+			secondary = user.application.data.find(item => item.name === "school")!.value;
+		}
+		if (user.application.type === "Mentor") {
+			secondary = user.application.data.find(item => item.name === "major")!.value;
+		}
+		if (user.application.type === "Volunteer") {
+			secondary = user.application.data.find(item => item.name === "volunteer-role")!.value + " Volunteer";
+		}
+		console.log(name, secondary);
 	});
 
 	reader.on("error", (err: Error) => {
