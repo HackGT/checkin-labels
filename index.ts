@@ -249,7 +249,7 @@ nfc.on("reader", async (reader: any) => {
 			secondary = user.application.data.find(item => item.name === "volunteer-role")!.value + " Volunteer";
 		}
 
-		await printer.printText(name, secondary);
+		await printer.print(await printer.rasterizeText(name, secondary, __dirname + "/HackGT.png"));
 	});
 
 	reader.on("error", (err: Error) => {
