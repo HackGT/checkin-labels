@@ -1,0 +1,19 @@
+{
+  "name": "checkin-label",
+  "version": "1.0.0",
+  "description": "HackGT check-in label generator",
+  "main": "index.js",
+  "dependencies": {
+    "@types/node-fetch": "^2.1.2",
+    "brother-ql": "github:petschekr/brother-ql",
+    "ndef": "^0.2.0",
+    "nfc-pcsc": "^0.6.2",
+    "node-fetch": "^2.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Ryan Petschek",
+  "license": "MIT"
+}
