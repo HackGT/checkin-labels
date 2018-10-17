@@ -1,12 +1,53 @@
 import * as fs from "fs";
 import * as urllib from "url";
+import * as usb from "usb";
 import * as BrotherQL from "brother-ql";
 const { NFC } = require("nfc-pcsc");
 import fetch from "node-fetch";
 
 const Config: { url: string; key: string } = JSON.parse(fs.readFileSync("./config.json", "utf8"));
 
-const printer = new BrotherQL.Printer();
+const VendorID = 0x04F9;
+const USBProductIDs: number[] = [
+	0x2015, // QL-500
+	0x2016, // QL-550
+	0x2027, // QL-560
+	0x2028, // QL-570
+	0x2029, // QL-580N
+	0x201B, // QL-650TD
+	0x2042, // QL-700
+	0x2020, // QL-1050
+	0x202A, // QL-1060N
+];
+
+let printers = new Map<number, BrotherQL.Printer>();
+async function addPrinter(device: usb.Device) {
+	const printer = new BrotherQL.Printer(device.deviceAddress);
+	await printer.init();
+	printer.attachErrorHandler(err => {
+		// Silently handle instead of crashing
+		console.log(err);
+	});
+	printer.useFont("Chicago", __dirname + "/Chicago.ttf");
+
+	printers.set(device.deviceAddress, printer);
+
+	let info = await printer.getStatus();
+	console.log(`Found ${info.model} loaded with ${JSON.stringify(info.media)} at USB address ${device.deviceAddress} (${printers.size} total)`);
+}
+function removePrinter(device: usb.Device) {
+	printers.delete(device.deviceAddress);
+	console.log(`Removed printer at USB address ${device.deviceAddress} (${printers.size} total)`);
+}
+
+BrotherQL.Printer.getAvailable().forEach(addPrinter);
+usb.on("attach", async device => {
+	if (device.deviceDescriptor.idVendor === VendorID && USBProductIDs.includes(device.deviceDescriptor.idProduct)) {
+		await addPrinter(device);
+	}
+});
+usb.on("detach", removePrinter);
+
 const nfc = new NFC();
 
 enum ParserState {
