@@ -21,6 +21,7 @@ const USBProductIDs: number[] = [
 ];
 
 let printers = new Map<number, BrotherQL.Printer>();
+let printersInUse = new Set<number>();
 async function addPrinter(device: usb.Device) {
 	const printer = new BrotherQL.Printer(device.deviceAddress);
 	await printer.init();
@@ -37,6 +38,7 @@ async function addPrinter(device: usb.Device) {
 }
 function removePrinter(device: usb.Device) {
 	printers.delete(device.deviceAddress);
+	printersInUse.delete(device.deviceAddress);
 	console.log(`Removed printer at USB address ${device.deviceAddress} (${printers.size} total)`);
 }
 
@@ -224,12 +226,39 @@ async function query<T>(query: string, variables?: { [name: string]: string }): 
 }
 
 nfc.on("reader", async (reader: any) => {
+	if (!(reader.reader.name as string).match(/ACR122/i)) {
+		reader.autoProcessing = false;
+		console.log(`Skipping invalid reader: ${reader.reader.name}`);
+		return;
+	}
 	reader.aid = "F222222222";
 
-	await printer.init();
-	printer.useFont("Chicago", __dirname + "/Chicago.ttf");
+	let printerID: number | null = null;
+	function getPrinter() {
+		printerID = null;
+		for (let [id, ] of printers.entries()) {
+			if (!printersInUse.has(id)) {
+				printersInUse.add(id);
+				printerID = id;
+				console.log(`${reader.reader.name} assigned to printer at USB address ${id}`);
+				break;
+			}
+		}
+	}
 
 	reader.on("card", async () => {
+		let printer = printers.get(printerID || Number.MIN_SAFE_INTEGER);
+		if (!printer) {
+			getPrinter();
+		}
+		if (!printerID) {
+			console.warn(`${reader.reader.name} not assigned to a printer (not enough)`);
+			return;
+		}
+		else {
+			printer = printers.get(printerID)!;
+		}
+
 		let data: Buffer;
 		let url: string;
 		try {
