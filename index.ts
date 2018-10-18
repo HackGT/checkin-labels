@@ -23,6 +23,9 @@ const USBProductIDs: number[] = [
 
 let printers = new Map<number, BrotherQL.Printer>();
 let printersInUse = new Set<number>();
+function isPrinter(device: usb.Device): boolean {
+	return device.deviceDescriptor.idVendor === VendorID && USBProductIDs.includes(device.deviceDescriptor.idProduct);
+}
 async function addPrinter(device: usb.Device) {
 	const printer = new BrotherQL.Printer(device.deviceAddress);
 	await printer.init();
@@ -45,11 +48,15 @@ function removePrinter(device: usb.Device) {
 
 BrotherQL.Printer.getAvailable().forEach(addPrinter);
 usb.on("attach", async device => {
-	if (device.deviceDescriptor.idVendor === VendorID && USBProductIDs.includes(device.deviceDescriptor.idProduct)) {
+	if (isPrinter(device)) {
 		await addPrinter(device);
 	}
 });
-usb.on("detach", removePrinter);
+usb.on("detach", device => {
+	if (isPrinter(device)) {
+		removePrinter(device);
+	}
+});
 
 const nfc = new NFC();
 
