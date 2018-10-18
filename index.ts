@@ -333,6 +333,12 @@ nfc.on("reader", async (reader: any) => {
 	reader.on("error", (err: Error) => {
 		console.error(err);
 	});
+	reader.on('end', function () {
+		if (printerID) {
+			printersInUse.delete(printerID);
+		}
+		console.log(`${reader.reader.name} removed and unassigned from printer at USB address ${printerID}`);
+	});
 });
 
 nfc.on("error", (err: Error) => {
