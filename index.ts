@@ -1,11 +1,12 @@
 import * as fs from "fs";
 import * as urllib from "url";
+import * as path from "path";
 import * as usb from "usb";
 import * as BrotherQL from "brother-ql";
 const { NFC } = require("nfc-pcsc");
 import fetch from "node-fetch";
 
-const Config: { url: string; key: string } = JSON.parse(fs.readFileSync("./config.json", "utf8"));
+const Config: { url: string; key: string } = JSON.parse(fs.readFileSync(path.join(__dirname, "./config.json"), "utf8"));
 
 const VendorID = 0x04F9;
 const USBProductIDs: number[] = [
