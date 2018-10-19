@@ -326,6 +326,9 @@ nfc.on("reader", async (reader: any) => {
 		if (user.application.type === "Volunteer") {
 			secondary = user.application.data.find(item => item.name === "volunteer-role")!.value + " Volunteer";
 		}
+		if (user.application.type === "Sponsor") {
+			secondary = user.application.data.find(item => item.name === "company")!.value;
+		}
 
 		await printer.print(await printer.rasterizeText(name, secondary, __dirname + "/HackGT.png"));
 	});
