@@ -315,19 +315,10 @@ nfc.on("reader", async (reader: any) => {
 			return;
 		}
 		let name = user.name;
-		let secondary: string | undefined = undefined;
-
-		if (["Participant - Travel Reimbursement", "Participant - Travel Reimbursement"].includes(user.application.type)) {
-			secondary = user.application.data.find(item => item.name === "school")!.value;
-		}
-		if (user.application.type === "Mentor") {
-			secondary = user.application.data.find(item => item.name === "major")!.value;
-		}
-		if (user.application.type === "Volunteer") {
-			secondary = user.application.data.find(item => item.name === "volunteer-role")!.value + " Volunteer";
-		}
-		if (user.application.type === "Sponsor") {
-			secondary = user.application.data.find(item => item.name === "company")!.value;
+		let secondary_raw = user.application.data.find(item => item.name === "major");
+		let secondary: string | undefined;
+		if (secondary_raw) {
+			secondary = secondary_raw.value;
 		}
 
 		await printer.print(await printer.rasterizeText(name, secondary, __dirname + "/HackGT.png"));
