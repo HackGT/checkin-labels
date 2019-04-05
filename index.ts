@@ -33,7 +33,7 @@ async function addPrinter(device: usb.Device) {
 		// Silently handle instead of crashing
 		console.log(err);
 	});
-	printer.useFont("Chicago", __dirname + "/Chicago.ttf");
+	printer.useFont("Nobel", __dirname + "/Nobel Regular.otf");
 
 	printers.set(device.deviceAddress, printer);
 
@@ -321,7 +321,7 @@ nfc.on("reader", async (reader: any) => {
 			secondary = secondary_raw.value;
 		}
 
-		await printer.print(await printer.rasterizeText(name, secondary, __dirname + "/HackGT.png"));
+		await printer.print(await printer.rasterizeText(name, secondary, __dirname + "/HackGT Mono.png"));
 	});
 
 	reader.on("error", (err: Error) => {
