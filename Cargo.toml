@@ -1,0 +1,13 @@
+[package]
+name = "checkin-label"
+version = "0.1.0"
+authors = ["Ryan Petschek <petschekr@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+brother-ql-rs = "0.1.1"
+hackgt-nfc = "0.3.3"
+libusb = "0.3.0"
+
+[patch.crates-io]
+brother-ql-rs = { path = "../brother-ql-rs" }
