@@ -31,11 +31,19 @@ fn main() {
             if let Some('\r') = name.chars().next_back() {
                 name.pop();
             }
+            let minor = if name.chars().next().unwrap() == '!' {
+                name.remove(0);
+                true
+            }
+            else {
+                false
+            };
+
             if name.chars().next().unwrap_or('q') == 'q' {
                 break;
             }
 
-            let lines = rasterizer.rasterize(&name, None, 1.0);
+            let lines = rasterizer.rasterize(&name, None, 1.0, minor);
             if let Err(err) = printer.print(lines) {
                 eprintln!("Error during printing: {:?}", err);
             }
