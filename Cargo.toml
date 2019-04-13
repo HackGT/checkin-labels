@@ -12,6 +12,12 @@ libusb = "0.3.0"
 serde_json = "1.0.39"
 crossbeam-channel = "0.3"
 
+openssl-sys = "*"
+
 [patch.crates-io]
 hackgt-nfc = { path = "../hackgt-nfc" }
 brother-ql-rs = { path = "../brother-ql-rs" }
+
+[features]
+# Builds OpenSSL independently so that the build succeeds even if OpenSSL library isn't installed for target
+vendored = ["openssl-sys/vendored"]

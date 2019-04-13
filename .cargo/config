@@ -1,3 +1,6 @@
 [target.x86_64-pc-windows-msvc.'usb-1.0']
 rustc-link-search = ["src/libusb/lib"]
 rustc-link-lib = ["libusb-1.0"]
+
+[target.armv7-unknown-linux-gnueabihf]
+linker = "arm-linux-gnueabihf-gcc"
