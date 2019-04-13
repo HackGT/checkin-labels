@@ -94,8 +94,8 @@ fn main() {
             printer_manager.get(id, move |printer| {
                 println!("Printer thread {} spawned", id);
                 for badge_data in receiver.iter() {
-                    let lines = rasterizer.rasterize(&badge_data.name, None, 1.0);
-                    if let Err(err) = printer.print(lines) {
+                    let lines = rasterizer.rasterize(&badge_data.name, None, 1.0, badge_data.is_minor);
+                    if let Err(err) = printer.print_blocking(lines) {
                         eprintln!("Error during printing: {:?}", err);
                     }
                 }
