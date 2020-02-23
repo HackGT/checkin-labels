@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>HackGT Printer Administration</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.8.0/css/bulma.min.css" />
+		<script defer src="js/index.js"></script>
+		<style>
+			table {
+				width: 100%;
+			}
+			td {
+				vertical-align: middle !important;
+			}
+			small {
+				display: block;
+				margin-top: -15px;
+				margin-bottom: 15px;
+			}
+		</style>
+	</head>
+	<body>
+		<section class="section container">
+			<h1 class="title">HackGT Labels</h1>
+			<p class="subtitle">Print Management UI</p>
+			{{!-- <small>Logged in as: <code>{{username}}</code></small> --}}
+			<table class="table is-hoverable">
+				<thead>
+					<th>Printer Model</th>
+					<th>Serial Number</th>
+					<th>Status</th>
+					<th>Actions</th>
+				</thead>
+				<tbody>
+					{{#each printers as |printer|}}
+						<tr>
+							<td>{{printer.manufacturer}} {{printer.model}}</td>
+							<td>{{printer.serial_number}}</td>
+							{{!-- Status --}}
+							<td>
+								{{!-- {{#if device.pending}}
+									<code>Pending</code>
+								{{/if}}
+								{{#if device.authorized}}
+									<code>Authorized</code>
+								{{else}}
+									<code>!Authorized</code>
+								{{/if}}
+								{{#if device.credentials_created}}
+									<code>Credentialed</code>
+								{{else}}
+									<code>!Credentialed</code>
+								{{/if}} --}}
+							</td>
+							{{!-- Actions --}}
+							<td>
+								{{!-- <button class="button action-rename">Rename</button>
+								{{#if device.pending}}
+									<button class="button is-success action-authorize">Authorize</button>
+									<button class="button is-danger action-reject">Reject</button>
+								{{else}}
+									{{#if device.credentials_created}}
+										<button class="button is-warning action-force-renew">Force account renewal</button>
+									{{/if}}
+									<button class="button is-danger action-delete">Delete</button>
+								{{/if}} --}}
+							</td>
+						</tr>
+					{{else}}
+						<tr>
+							<td><i>No devices</i></td>
+						</tr>
+					{{/each}}
+				</tbody>
+			</table>
+
+			<table class="table is-hoverable">
+				<thead>
+					<th>Reader Name</th>
+					<th>Status</th>
+					<th>Assigned Printer</th>
+				</thead>
+				<tbody>
+					{{#each readers as |reader|}}
+						<tr>
+							<td>{{reader.name}}</td>
+							<td>{{#if reader.connected}}Connected{{else}}Disconnected{{/if}}</td>
+							<td>
+								<select>
+									<option>None</option>
+									<optgroup label="Printers">
+										{{#each ../printers as |printer|}}
+											<option>{{printer.serial_number}}</option>
+										{{/each}}
+									</optgroup>
+								</select>
+							</td>
+						</tr>
+					{{else}}
+						<tr>
+							<td><i>No devices</i></td>
+						</tr>
+					{{/each}}
+				</tbody>
+			</table>
+		</section>
+	</body>
+</html>
