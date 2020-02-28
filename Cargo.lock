@@ -189,7 +189,7 @@ name = "checkin-label"
 version = "0.1.0"
 dependencies = [
  "brother-ql-rs 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hackgt-nfc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hackgt-nfc 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_contrib 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusb 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -591,7 +591,7 @@ dependencies = [
 
 [[package]]
 name = "hackgt-nfc"
-version = "0.3.5"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "graphql_client 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2223,7 +2223,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum graphql_client_codegen 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dbbd911d25d37c6113fecbde95619869117a1903dad9dc0b94bbf1ac4c3d2747"
 "checksum graphql_query_derive 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b0d251ffd6428a2a6a0fde38539a3858816fa2aa70bcfcc0a16968c93d51d0c7"
 "checksum h2 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b9433d71e471c1736fd5a61b671fc0b148d7a2992f666c958d03cd8feb3b88d1"
-"checksum hackgt-nfc 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "fd892d72a848fe5d16d0fb6ff95408bb1b119a3f6812860282c712aef2277367"
+"checksum hackgt-nfc 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "03bbbd715ddb6a31c5446b43da525ca394e9a7d2824516be478dc5d8bae09490"
 "checksum handlebars 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d82e5750d8027a97b9640e3fefa66bbaf852a35228e1c90790efd13c4b09c166"
 "checksum heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
 "checksum hermit-abi 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "eff2656d88f158ce120947499e971d743c05dbcbed62e5bd2f38f1698bbc3772"
