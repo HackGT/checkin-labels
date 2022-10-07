@@ -4,22 +4,19 @@ import * as constants from "./constants";
 
 import { createCanvas, loadImage, registerFont } from "canvas";
 
-interface CustomCanvas {
-  stride: number;
-  toBuffer: (mimeType?: string) => Buffer;
-}
-
 export enum MediaType {
   None,
   ContinuousTape,
   DieCutLabels,
 }
+
 export namespace Status {
   export interface Media {
     type: MediaType;
     width: number;
     length: number;
   }
+
   export enum Type {
     ReplyToStatusRequest,
     PrintingCompleted,
@@ -27,6 +24,7 @@ export namespace Status {
     Notification,
     PhaseChange,
   }
+
   export interface Response {
     model: string;
     statusType: Type;
@@ -38,36 +36,15 @@ export namespace Status {
 export class Printer {
   public readonly debugMode =
     process.env.DEBUG && process.env.DEBUG.toLowerCase() === "true";
+
   private readonly printerInterface: Interface;
   private readonly input: InEndpoint | null = null;
   private readonly output: OutEndpoint | null = null;
 
   private statusHandlers: ((status: Status.Response) => void)[] = [];
-  private removeStatusHandler(handler: (status: Status.Response) => void) {
-    let index = this.statusHandlers.indexOf(handler);
-    if (index === -1) {
-      console.warn("Tried to remove invalid status handler");
-    } else {
-      this.statusHandlers.splice(index, 1);
-    }
-  }
+  private errorHandlers: ((err: Error) => void)[] = [];
 
-  public static getAvailable(): usb.Device[] {
-    return usb
-      .getDeviceList()
-      .filter(
-        (device) =>
-          device.deviceDescriptor.idVendor === constants.VendorID &&
-          constants.USBProductIDs.includes(device.deviceDescriptor.idProduct)
-      );
-  }
-
-  public static isPrinter(device: usb.Device): boolean {
-    return (
-      device.deviceDescriptor.idVendor === constants.VendorID &&
-      constants.USBProductIDs.includes(device.deviceDescriptor.idProduct)
-    );
-  }
+  private font: string = "Arial";
 
   constructor(deviceAddress?: number) {
     if (findByIds(constants.VendorID, 0x2049)) {
@@ -76,9 +53,10 @@ export class Printer {
       );
     }
 
-    let printers = Printer.getAvailable();
-    if (printers.length === 0)
+    let printers = Printer.getAvailablePrinters();
+    if (printers.length === 0) {
       throw new Error("Couldn't find a compatible printer");
+    }
 
     let printer: usb.Device | undefined;
     if (deviceAddress) {
@@ -88,10 +66,12 @@ export class Printer {
     } else {
       printer = printers[0];
     }
-    if (!printer)
+
+    if (!printer) {
       throw new Error(
         `No compatible printer found with specified address: ${deviceAddress}`
       );
+    }
 
     printer.open();
     this.printerInterface = printer.interface(0);
@@ -102,6 +82,7 @@ export class Printer {
       this.printerInterface.detachKernelDriver();
     }
     this.printerInterface.claim();
+
     for (let endpoint of this.printerInterface.endpoints) {
       if (endpoint.direction === "in") {
         this.input = endpoint as InEndpoint;
@@ -119,8 +100,10 @@ export class Printer {
         });
       }
     }
-    if (!this.input || !this.output)
+
+    if (!this.input || !this.output) {
       throw new Error("Input/output endpoints not found");
+    }
 
     this.input.startPoll(1, 32);
     this.input.on("data", (data: Buffer) => {
@@ -136,16 +119,45 @@ export class Printer {
     });
   }
 
-  private errorHandlers: ((err: Error) => void)[] = [];
+  public async init() {
+    const clearCommand = Buffer.alloc(200);
+    await this.transfer(clearCommand);
+
+    const initializeCommand = Buffer.from([0x1b, 0x40]);
+    await this.transfer(initializeCommand);
+  }
+
+  public useFont(name: string, path: string) {
+    registerFont(path, { family: name });
+    this.font = name;
+  }
+
+  private addStatusHandler(handler: (status: Status.Response) => void) {
+    this.statusHandlers.push(handler);
+  }
+
+  private removeStatusHandler(handler: (status: Status.Response) => void) {
+    let index = this.statusHandlers.indexOf(handler);
+    if (index === -1) {
+      console.warn("Tried to remove invalid status handler");
+    } else {
+      this.statusHandlers.splice(index, 1);
+    }
+  }
+
   public attachErrorHandler(handler: (err: Error) => void) {
     this.errorHandlers.push(handler);
   }
 
-  public async init() {
-    let clearCommand = Buffer.alloc(200);
-    await this.transfer(clearCommand);
-    let initializeCommand = Buffer.from([0x1b, 0x40]);
-    await this.transfer(initializeCommand);
+  public static getAvailablePrinters(): usb.Device[] {
+    return usb.getDeviceList().filter(this.isPrinter);
+  }
+
+  public static isPrinter(device: usb.Device): boolean {
+    return (
+      device.deviceDescriptor.idVendor === constants.VendorID &&
+      constants.USBProductIDs.includes(device.deviceDescriptor.idProduct)
+    );
   }
 
   private parseStatusResponse(response: Buffer): Status.Response {
@@ -268,20 +280,15 @@ export class Printer {
     return new Promise<Status.Response>((resolve, reject) => {
       const command = Buffer.from([0x1b, 0x69, 0x53]);
       this.transfer(command);
-      this.statusHandlers.push((response) => {
+      this.addStatusHandler((response) => {
         resolve(response);
       });
     });
   }
 
-  async print(
-    rasterLines: Buffer[],
-    status?: Status.Response
-  ): Promise<Status.Response> {
+  async print(rasterLines: Buffer[]): Promise<Status.Response> {
     return new Promise<Status.Response>(async (resolve, reject) => {
-      if (!status) {
-        status = await this.getStatus();
-      }
+      const status = await this.getStatus();
 
       const modeCommand = Buffer.from([0x1b, 0x69, 0x61, 1]);
       await this.transfer(modeCommand);
@@ -311,7 +318,7 @@ export class Printer {
       await this.transfer(Buffer.from([0x1b, 0x69, 0x4d, 1 << 6])); // Enable auto-cut
       await this.transfer(Buffer.from([0x1b, 0x69, 0x4b, (1 << 3) | (0 << 6)])); // Enable cut-at-end and disable high res printing
 
-      let mediaInfo =
+      const mediaInfo =
         constants.Labels[
           status.media.width.toString() +
             (status.media.type === MediaType.DieCutLabels
@@ -350,7 +357,7 @@ export class Printer {
           this.removeStatusHandler(statusHandler);
         }
       };
-      this.statusHandlers.push(statusHandler);
+      this.addStatusHandler(statusHandler);
     });
   }
 
@@ -384,14 +391,6 @@ export class Printer {
     }
 
     return lines;
-  }
-
-  private font: string = "Arial";
-  useFont(name: string, path?: string): void {
-    if (path) {
-      registerFont(path, { family: name });
-    }
-    this.font = name;
   }
 
   async rasterizeText(
@@ -450,6 +449,7 @@ export class Printer {
       }
       primaryFontSize--;
     }
+
     if (secondary) {
       const maxPrimarySize = 72;
       if (primaryFontSize > maxPrimarySize) {

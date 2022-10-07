@@ -40,6 +40,7 @@ async function addPrinter(device: usb.Device) {
     )} at USB address ${device.deviceAddress} (${printers.size} total)`
   );
 }
+
 function removePrinter(device: usb.Device) {
   printers.delete(device.deviceAddress);
   printersInUse.delete(device.deviceAddress);
@@ -48,7 +49,8 @@ function removePrinter(device: usb.Device) {
   );
 }
 
-BrotherQL.Printer.getAvailable().forEach(addPrinter);
+BrotherQL.Printer.getAvailablePrinters().forEach(addPrinter);
+
 usb.on("attach", async (device) => {
   if (BrotherQL.Printer.isPrinter(device)) {
     await addPrinter(device);

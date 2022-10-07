@@ -1,5 +1,6 @@
-export type WidthLength = [number, number];
-export interface Label {
+type WidthLength = [number, number];
+
+interface Label {
   tapeSize: WidthLength;
   dots: WidthLength;
   dotsPrintable: WidthLength;
@@ -129,7 +130,8 @@ export const Labels: { [type: string]: Label } = {
   },
 };
 
-export const VendorID = 0x04f9;
+export const VendorID = 0x04f9; // Brother Industries, Ltd.
+
 export const USBProductIDs: number[] = [
   0x2015, // QL-500
   0x2016, // QL-550
