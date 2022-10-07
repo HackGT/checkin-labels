@@ -10,27 +10,9 @@ const Config: { url: string; key: string } = JSON.parse(
   fs.readFileSync(path.join(__dirname, "./config.json"), "utf8")
 );
 
-const VendorID = 0x04f9;
-const USBProductIDs: number[] = [
-  0x2015, // QL-500
-  0x2016, // QL-550
-  0x2027, // QL-560
-  0x2028, // QL-570
-  0x2029, // QL-580N
-  0x201b, // QL-650TD
-  0x2042, // QL-700
-  0x2020, // QL-1050
-  0x202a, // QL-1060N
-];
-
 let printers = new Map<number, BrotherQL.Printer>();
 let printersInUse = new Set<number>();
-function isPrinter(device: usb.Device): boolean {
-  return (
-    device.deviceDescriptor.idVendor === VendorID &&
-    USBProductIDs.includes(device.deviceDescriptor.idProduct)
-  );
-}
+
 async function addPrinter(device: usb.Device) {
   const printer = new BrotherQL.Printer(device.deviceAddress);
   await printer.init();
@@ -59,12 +41,12 @@ function removePrinter(device: usb.Device) {
 
 BrotherQL.Printer.getAvailable().forEach(addPrinter);
 usb.on("attach", async (device) => {
-  if (isPrinter(device)) {
+  if (BrotherQL.Printer.isPrinter(device)) {
     await addPrinter(device);
   }
 });
 usb.on("detach", (device) => {
-  if (isPrinter(device)) {
+  if (BrotherQL.Printer.isPrinter(device)) {
     removePrinter(device);
   }
 });
@@ -274,7 +256,8 @@ async function query<T>(
       variables: variables || {},
     }),
   });
-  let json = await response.json();
+
+  const json: any = await response.json();
   if (response.ok) {
     return json.data;
   } else {

@@ -68,6 +68,13 @@ export class Printer {
       );
   }
 
+  public static isPrinter(device: usb.Device): boolean {
+    return (
+      device.deviceDescriptor.idVendor === constants.VendorID &&
+      constants.USBProductIDs.includes(device.deviceDescriptor.idProduct)
+    );
+  }
+
   constructor(deviceAddress?: number) {
     if (usb.findByIds(constants.VendorID, 0x2049)) {
       throw new Error(
