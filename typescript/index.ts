@@ -5,7 +5,7 @@ import { usb } from "usb";
 import fetch from "node-fetch";
 const { NFC } = require("nfc-pcsc");
 
-import * as BrotherQL from "./brother";
+import { BrotherQLPrinter } from "./BrotherQLPrinter";
 import { NDEFParser } from "./NDEFParser";
 
 dotenv.config();
@@ -19,11 +19,11 @@ const Config: { url: string; key: string } = JSON.parse(
   fs.readFileSync(path.join(__dirname, "./config.json"), "utf8")
 );
 
-let printers = new Map<number, BrotherQL.Printer>();
+let printers = new Map<number, BrotherQLPrinter>();
 let printersInUse = new Set<number>();
 
 async function addPrinter(device: usb.Device) {
-  const printer = new BrotherQL.Printer(device.deviceAddress);
+  const printer = new BrotherQLPrinter(device.deviceAddress);
   await printer.init();
   printer.attachErrorHandler((err) => {
     // Silently handle instead of crashing
@@ -49,25 +49,36 @@ function removePrinter(device: usb.Device) {
   );
 }
 
-BrotherQL.Printer.getAvailablePrinters().forEach(addPrinter);
+BrotherQLPrinter.getAvailablePrinters().forEach(addPrinter);
 
 usb.on("attach", async (device) => {
-  if (BrotherQL.Printer.isPrinter(device)) {
+  if (BrotherQLPrinter.isPrinter(device)) {
     await addPrinter(device);
   }
 });
 usb.on("detach", (device) => {
-  if (BrotherQL.Printer.isPrinter(device)) {
+  if (BrotherQLPrinter.isPrinter(device)) {
     removePrinter(device);
   }
 });
 
-const nfc = new NFC();
+interface UserResponse {
+  user: {
+    name: string;
+    application: {
+      type: string;
+      data: {
+        name: string;
+        value: string;
+      }[];
+    } | null;
+  } | null;
+}
 
-async function query<T>(
+async function queryData(
   query: string,
   variables?: { [name: string]: string }
-): Promise<T> {
+): Promise<UserResponse> {
   let response = await fetch(Config.url + "/graphql", {
     method: "POST",
     headers: {
@@ -89,6 +100,8 @@ async function query<T>(
     throw new Error(JSON.stringify(json.errors));
   }
 }
+
+const nfc = new NFC();
 
 nfc.on("reader", async (reader: any) => {
   if (!(reader.reader.name as string).match(/ACR122/i)) {
@@ -136,8 +149,7 @@ nfc.on("reader", async (reader: any) => {
       console.error(err);
       return;
     }
-    console.log(data);
-    console.log(url);
+
     const match = url.match(/^https:\/\/live.hack.gt\/?\?user=([a-f0-9\-]+)$/i);
     if (!match) {
       console.warn(`Invalid URL: ${url}`);
@@ -145,19 +157,7 @@ nfc.on("reader", async (reader: any) => {
     }
     const [, id] = match;
 
-    interface UserResponse {
-      user: {
-        name: string;
-        application: {
-          type: string;
-          data: {
-            name: string;
-            value: string;
-          }[];
-        } | null;
-      } | null;
-    }
-    const { user } = await query<UserResponse>(`
+    const { user } = await queryData(`
 		{ user(id: "${id}") {
 			name,
 			application {

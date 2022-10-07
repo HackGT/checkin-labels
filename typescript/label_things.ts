@@ -1,7 +1,7 @@
 import * as path from "path";
-import * as BrotherQL from "./brother";
+import { BrotherQLPrinter } from "./BrotherQLPrinter";
 
-const printer = new BrotherQL.Printer();
+const printer = new BrotherQLPrinter();
 
 (async () => {
   await printer.init();

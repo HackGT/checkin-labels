@@ -13,11 +13,14 @@ enum WellKnownType {
   URI,
 }
 
+/**
+ * NDEF is a standardized data format specification by the NFC Forum which is used to describe
+ * how a set of actions are to be encoded onto a NFC tag or to be exchanged between two active
+ * NFC devices. This class parses NDEF messages from a stream of bytes.
+ */
 export class NDEFParser {
   private state = ParserState.None;
   private ndefType = WellKnownType.Unknown;
-  private recordTypeLength = 1;
-  private initialDataByte = NaN;
   private content: Buffer = Buffer.alloc(0);
   private contentIndex = 0;
 
@@ -53,7 +56,6 @@ export class NDEFParser {
         }
         this.state = ParserState.NDEFTypeLength;
       } else if (this.state === ParserState.NDEFTypeLength) {
-        this.recordTypeLength = byte;
         this.state = ParserState.NDEFPayloadLength;
       } else if (this.state === ParserState.NDEFPayloadLength) {
         this.content = Buffer.alloc(byte);
@@ -66,7 +68,6 @@ export class NDEFParser {
         if (byte === 0x55) {
           this.ndefType = WellKnownType.URI;
         }
-        this.initialDataByte = NaN;
         this.state = ParserState.NDEFData;
       } else if (this.state === ParserState.NDEFData) {
         if (byte === 0xfe) {
@@ -88,6 +89,7 @@ export class NDEFParser {
       this.content.slice(1, this.content.length).toString("utf8")
     );
   }
+
   public getText(): string {
     if (this.content.length < 4 || this.ndefType !== WellKnownType.Text) {
       throw new Error("No text content found on tag");
@@ -97,6 +99,7 @@ export class NDEFParser {
       .slice(1 + languageCodeLength, this.content.length)
       .toString("utf8");
   }
+
   public getContent(): string {
     if (this.ndefType === WellKnownType.Text) {
       return this.getText();

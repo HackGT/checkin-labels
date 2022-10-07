@@ -4,13 +4,13 @@ import * as constants from "./constants";
 
 import { createCanvas, loadImage, registerFont } from "canvas";
 
-export enum MediaType {
+enum MediaType {
   None,
   ContinuousTape,
   DieCutLabels,
 }
 
-export namespace Status {
+namespace Status {
   export interface Media {
     type: MediaType;
     width: number;
@@ -33,7 +33,7 @@ export namespace Status {
   }
 }
 
-export class Printer {
+export class BrotherQLPrinter {
   public readonly debugMode =
     process.env.DEBUG && process.env.DEBUG.toLowerCase() === "true";
 
@@ -53,7 +53,7 @@ export class Printer {
       );
     }
 
-    let printers = Printer.getAvailablePrinters();
+    let printers = BrotherQLPrinter.getAvailablePrinters();
     if (printers.length === 0) {
       throw new Error("Couldn't find a compatible printer");
     }
