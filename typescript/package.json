@@ -5,11 +5,11 @@
   "main": "index.js",
   "dependencies": {
     "@types/node": "^18.8.3",
-    "@types/node-fetch": "^2.6.2",
+    "@types/node-fetch": "^2.6.1",
     "canvas": "^2.10.1",
     "ndef": "^0.2.0",
     "nfc-pcsc": "^0.8.1",
-    "node-fetch": "^3.2.10",
+    "node-fetch": "^2.6.1",
     "node-gyp": "^9.2.0",
     "usb": "^2.5.2"
   },
