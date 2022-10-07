@@ -1,19 +1,13 @@
 import * as fs from "fs";
-import * as usb from "usb";
+import { usb, findByIds, Interface, InEndpoint, OutEndpoint } from "usb";
 import * as constants from "./constants";
+
+import { createCanvas, loadImage, registerFont } from "canvas";
 
 interface CustomCanvas {
   stride: number;
   toBuffer: (mimeType?: string) => Buffer;
 }
-const Canvas: {
-  createCanvas(width: number, height: number): HTMLCanvasElement & CustomCanvas;
-  registerFont(
-    path: string,
-    config: { family: string; weight?: string | number; style?: string }
-  ): void;
-  loadImage(path: string): Promise<ImageBitmap>;
-} = require("canvas");
 
 export enum MediaType {
   None,
@@ -44,9 +38,9 @@ export namespace Status {
 export class Printer {
   public readonly debugMode =
     process.env.DEBUG && process.env.DEBUG.toLowerCase() === "true";
-  private readonly printerInterface: usb.Interface;
-  private readonly input: usb.InEndpoint | null = null;
-  private readonly output: usb.OutEndpoint | null = null;
+  private readonly printerInterface: Interface;
+  private readonly input: InEndpoint | null = null;
+  private readonly output: OutEndpoint | null = null;
 
   private statusHandlers: ((status: Status.Response) => void)[] = [];
   private removeStatusHandler(handler: (status: Status.Response) => void) {
@@ -76,7 +70,7 @@ export class Printer {
   }
 
   constructor(deviceAddress?: number) {
-    if (usb.findByIds(constants.VendorID, 0x2049)) {
+    if (findByIds(constants.VendorID, 0x2049)) {
       throw new Error(
         "You must disable Editor Lite mode on your QL-700 before you can use this module"
       );
@@ -110,14 +104,14 @@ export class Printer {
     this.printerInterface.claim();
     for (let endpoint of this.printerInterface.endpoints) {
       if (endpoint.direction === "in") {
-        this.input = endpoint as usb.InEndpoint;
+        this.input = endpoint as InEndpoint;
         this.input.on("error", (err) => {
           this.errorHandlers.forEach((handler) => {
             handler(err);
           });
         });
       } else if (endpoint.direction === "out") {
-        this.output = endpoint as usb.OutEndpoint;
+        this.output = endpoint as OutEndpoint;
         this.output.on("error", (err) => {
           this.errorHandlers.forEach((handler) => {
             handler(err);
@@ -395,7 +389,7 @@ export class Printer {
   private font: string = "Arial";
   useFont(name: string, path?: string): void {
     if (path) {
-      Canvas.registerFont(path, { family: name });
+      registerFont(path, { family: name });
     }
     this.font = name;
   }
@@ -442,7 +436,7 @@ export class Printer {
       width = mediaInfo.dotsPrintable[0] + mediaInfo.rightMargin;
       length = mediaInfo.dotsPrintable[1];
     }
-    const canvas = Canvas.createCanvas(length, width + secondaryWidth);
+    const canvas = createCanvas(length, width + secondaryWidth);
     const ctx = canvas.getContext("2d")!;
     ctx.globalCompositeOperation = "luminosity";
     ctx.textAlign = "center";
@@ -480,7 +474,7 @@ export class Printer {
 
     if (secondRowImagePath && status.media.width === 12) {
       // Draw image on second label tape
-      const image = await Canvas.loadImage(secondRowImagePath);
+      const image = await loadImage(secondRowImagePath);
       const topMargin = 15;
 
       const ratio = image.width / image.height;

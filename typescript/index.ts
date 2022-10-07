@@ -1,10 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as dotenv from "dotenv";
 import { usb } from "usb";
 import fetch from "node-fetch";
 const { NFC } = require("nfc-pcsc");
 
 import * as BrotherQL from "./brother";
+import { NDEFParser } from "./NDEFParser";
+
+dotenv.config();
+
+// Throw and show a stack trace on an unhandled Promise rejection instead of logging an unhelpful warning
+process.on("unhandledRejection", (err) => {
+  throw err;
+});
 
 const Config: { url: string; key: string } = JSON.parse(
   fs.readFileSync(path.join(__dirname, "./config.json"), "utf8")
@@ -20,7 +29,7 @@ async function addPrinter(device: usb.Device) {
     // Silently handle instead of crashing
     console.log(err);
   });
-  printer.useFont("Chicago", __dirname + "/../fonts/Chicago.ttf");
+  printer.useFont("Chicago", path.join(__dirname, "/../fonts/Chicago.ttf"));
 
   printers.set(device.deviceAddress, printer);
 
