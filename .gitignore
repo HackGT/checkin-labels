@@ -35,3 +35,7 @@ config\.json
 **/*.rs.bk
 
 .DS_Store
+
+
+google-cloud-credentials.json
+.env
