@@ -397,7 +397,7 @@ export class BrotherQLPrinter {
     primary: string,
     secondary?: string,
     secondRowImagePath?: string,
-    defaultLength: number = 750
+    defaultLength: number = 550
   ): Promise<Buffer[]> {
     let status = await this.getStatus();
     let width = 0;

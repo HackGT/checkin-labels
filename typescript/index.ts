@@ -4,16 +4,54 @@ import * as dotenv from "dotenv";
 import { usb } from "usb";
 import fetch from "node-fetch";
 const { NFC } = require("nfc-pcsc");
+const NodeCache = require("node-cache");
+import admin from "firebase-admin";
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithCustomToken } from "firebase/auth";
 
 import { BrotherQLPrinter } from "./BrotherQLPrinter";
 import { NDEFParser } from "./NDEFParser";
+import axios from "axios";
 
 dotenv.config();
+
+// Initialize firebase admin with credentials
+admin.initializeApp();
+const app = initializeApp({
+  apiKey: "AIzaSyCsukUZtMkI5FD_etGfefO4Sr7fHkZM7Rg",
+  authDomain: "auth.hexlabs.org",
+});
+const auth = getAuth(app);
 
 // Throw and show a stack trace on an unhandled Promise rejection instead of logging an unhelpful warning
 process.on("unhandledRejection", (err) => {
   throw err;
 });
+
+const cache = new NodeCache({ stdTTL: 1800, checkperiod: 120 });
+
+const HEXATHON_ID = process.env.HEXATHON_ID ?? "";
+const ADMIN_USER_ID = process.env.ADMIN_USER_ID ?? "";
+
+if (!HEXATHON_ID || !ADMIN_USER_ID) {
+  console.error("Missing required environment variables");
+  process.exit(1);
+}
+
+const getIdToken = async (userId: string) => {
+  // Cache id token for 30 minutes so we don't have to keep fetching it
+  let idToken = cache.get("idToken");
+  if (idToken) {
+    return idToken;
+  }
+  const customToken = await admin.auth().createCustomToken(userId);
+  const userCredential = await signInWithCustomToken(auth, customToken);
+  idToken = await userCredential.user.getIdToken();
+
+  cache.set("idToken", idToken, 60 * 30);
+
+  return idToken;
+};
 
 const Config: { url: string; key: string } = JSON.parse(
   fs.readFileSync(path.join(__dirname, "./config.json"), "utf8")
@@ -62,45 +100,6 @@ usb.on("detach", (device) => {
   }
 });
 
-interface UserResponse {
-  user: {
-    name: string;
-    application: {
-      type: string;
-      data: {
-        name: string;
-        value: string;
-      }[];
-    } | null;
-  } | null;
-}
-
-async function queryData(
-  query: string,
-  variables?: { [name: string]: string }
-): Promise<UserResponse> {
-  let response = await fetch(Config.url + "/graphql", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${Buffer.from(Config.key, "utf8").toString(
-        "base64"
-      )}`,
-    },
-    body: JSON.stringify({
-      query,
-      variables: variables || {},
-    }),
-  });
-
-  const json: any = await response.json();
-  if (response.ok) {
-    return json.data;
-  } else {
-    throw new Error(JSON.stringify(json.errors));
-  }
-}
-
 const nfc = new NFC();
 
 nfc.on("reader", async (reader: any) => {
@@ -140,74 +139,59 @@ nfc.on("reader", async (reader: any) => {
       printer = printers.get(printerID)!;
     }
 
-    let data: Buffer;
-    let url: string;
+    let uid: string;
     try {
-      data = await reader.read(4, 70);
-      url = new NDEFParser(data).getURI();
+      const data: Buffer = await reader.read(4, 70);
+      const ndef = new NDEFParser(data);
+      const json = await JSON.parse(ndef.getText());
+      uid = json.uid;
     } catch (err) {
       console.error(err);
       return;
     }
 
-    const match = url.match(/^https:\/\/live.hack.gt\/?\?user=([a-f0-9\-]+)$/i);
-    if (!match) {
-      console.warn(`Invalid URL: ${url}`);
-      return;
-    }
-    const [, id] = match;
+    let application;
+    try {
+      const response = await axios.get(
+        `https://registration.api.hexlabs.org/applications?userId=${uid}&hexathon=${HEXATHON_ID}`,
+        {
+          headers: {
+            Authorization: `Bearer ${await getIdToken(ADMIN_USER_ID)}`,
+          },
+        }
+      );
 
-    const { user } = await queryData(`
-		{ user(id: "${id}") {
-			name,
-			application {
-				type,
-				data {
-					name,
-					value
-				}
-			}
-		} }`);
-    if (!user) {
-      console.warn(`ID ${id} not found in registration`);
+      const data = response.data;
+
+      if (!data?.applications || data.applications.length === 0) {
+        throw new Error("Invalid application");
+      }
+      application = data.applications[0];
+    } catch (err) {
+      console.warn(err);
       return;
     }
-    if (!user.application) {
-      console.warn(`User ${id} (${user.name}) has not applied`);
-      return;
-    }
-    let name = user.name;
+
+    let name = application.name;
     let secondary: string | undefined = undefined;
 
-    if (
-      [
-        "Participant - Travel Reimbursement",
-        "Participant - Travel Reimbursement",
-      ].includes(user.application.type)
-    ) {
-      secondary = user.application.data.find(
-        (item) => item.name === "school"
-      )!.value;
-    }
-    if (user.application.type === "Mentor") {
-      secondary = user.application.data.find(
-        (item) => item.name === "major"
-      )!.value;
-    }
-    if (user.application.type === "Volunteer") {
-      secondary =
-        user.application.data.find((item) => item.name === "volunteer-role")!
-          .value + " Volunteer";
-    }
-    if (user.application.type === "Sponsor") {
-      secondary = user.application.data.find(
-        (item) => item.name === "company"
-      )!.value;
+    if (application.applicationData?.school) {
+      secondary = application.applicationData.school;
+    } else if (application.applicationData?.company) {
+      secondary = application.applicationData.company;
     }
 
-    await printer.print(
-      await printer.rasterizeText(name, secondary, __dirname + "/HackGT.png")
-    );
+    try {
+      await printer.print(
+        await printer.rasterizeText(
+          name,
+          secondary,
+          path.join(__dirname, "/../logos/HackGT Classic (Transparent).png")
+        )
+      );
+    } catch (e) {
+      console.warn(e);
+    }
   });
 
   reader.on("error", (err: Error) => {
