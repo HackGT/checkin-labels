@@ -10,7 +10,7 @@
     "canvas": "^2.10.1",
     "dotenv": "^16.0.3",
     "firebase": "^9.12.1",
-    "firebase-admin": "^11.2.0",
+    "firebase-admin": "^11.4.1",
     "ndef": "^0.2.0",
     "nfc-pcsc": "^0.8.1",
     "node-cache": "^5.1.2",
